@@ -27,7 +27,12 @@ foreach ($entry in $entries) {
     if (-not (Test-Path $source)) {
         throw "Required QM runtime entry is missing: $source"
     }
-    Copy-Item $source (Join-Path $target $entry) -Recurse -Force
+    $destination = Join-Path $target $entry
+    $destinationParent = Split-Path $destination -Parent
+    if ($destinationParent -and -not (Test-Path $destinationParent)) {
+        New-Item -ItemType Directory -Force -Path $destinationParent | Out-Null
+    }
+    Copy-Item $source $destination -Recurse -Force
 }
 
 Write-Output "QM runtime staged at $target"

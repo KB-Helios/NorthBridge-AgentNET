@@ -5,7 +5,7 @@
 
 ## Decision
 
-NorthBridge will preserve QM as the orchestration core and package it as a local-first Tauri v2 desktop deployment target. Tauri is a native shell and process supervisor, not a replacement backend. The runtime comprises the existing QM Vite/Lit user interface, a bundled Node 24 runtime running QM, a bundled AgentGateway binary, durable SQLite desktop adapters, and local workspaces. AgentOS is deferred to an optional future `Sandbox` adapter.
+NorthBridge will preserve QM as the orchestration core and package it as a local-first Tauri v2 desktop deployment target. Tauri is a native shell and process supervisor, not a replacement backend. The implemented desktop milestone provides a React control surface that starts and monitors the bundled AgentGateway binary. The planned runtime will comprise the existing QM Vite/Lit user interface, a bundled Node 24 runtime running QM, a bundled AgentGateway binary, durable SQLite desktop adapters, and local workspaces. AgentOS is deferred to an optional future `Sandbox` adapter.
 
 | Approach | Trade-offs | Cost | Setup complexity |
 | --- | --- | --- | --- |
@@ -33,9 +33,9 @@ flowchart LR
 
 ## Sidecar protocol
 
-The host resolves application data, retrieves provider credentials from OS-native secure storage, generates a fresh boot token, atomically writes a versioned gateway configuration, starts AgentGateway, validates readiness, starts Node 24 with QM, and only then reveals the WebView. QM receives loopback provider base URLs and the boot-scoped token. On exit, the host gracefully shuts down QM and AgentGateway before recording a redacted lifecycle result.
+The host resolves application data, retrieves provider credentials from OS-native secure storage, generates a fresh boot token, atomically writes a versioned gateway configuration, starts AgentGateway, and validates readiness. Planned: The host will then start Node 24 with QM, validate QM readiness, and only then reveal the WebView. The current implementation starts the gateway during setup but does not yet wire the QM Node 24 sidecar or fail startup on gateway errors. QM will receive loopback provider base URLs and the boot-scoped token. On exit, the host must gracefully shut down QM and AgentGateway before recording a redacted lifecycle result.
 
-All internal endpoints bind to `127.0.0.1`. The WebView cannot run arbitrary commands, choose a sidecar path, or call the raw AgentGateway administration endpoint. Tauri exposes a typed, narrow IPC interface. AgentGateway routes provider-qualified LLM models and MCP targets while keeping provider values out of QM and local persistence. [1] [2] [3]
+All internal endpoints bind to `127.0.0.1`. The WebView cannot run arbitrary commands, choose a sidecar path, or call the raw AgentGateway administration endpoint. The CSP must restrict connect-src to only explicitly required non-administrative ports rather than allowing unrestricted loopback access, ensuring AgentGateway administrative routes such as /quitquitquit remain protected from direct WebView requests. Tauri exposes a typed, narrow IPC interface. AgentGateway routes provider-qualified LLM models and MCP targets while keeping provider values out of QM and local persistence. [1] [2] [3]
 
 ## Desktop durability
 
@@ -57,7 +57,7 @@ The initial desktop build retains a restricted local or optional Docker/full-san
 
 ## First executable milestone
 
-The app starts one AgentGateway and one Node 24 QM process, validates both before exposing the UI, routes QM provider traffic through AgentGateway, maintains loopback-only internal services, and stops both children gracefully. It does not embed provider secrets in `qm.sqlite` and does not claim SQLite parity before adapter, migration, and recovery tests pass.
+The current implementation starts AgentGateway with lifecycle controls, including stopping it on application exit, but does not yet wire the QM Node 24 sidecar or fail startup on gateway errors. The planned milestone will start one AgentGateway and one Node 24 QM process, validate both before exposing the UI, route QM provider traffic through AgentGateway, maintain loopback-only internal services, and stop both children gracefully. It will not embed provider secrets in `qm.sqlite` and will not claim SQLite parity before adapter, migration, and recovery tests pass.
 
 ## References
 

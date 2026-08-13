@@ -31,6 +31,7 @@ npm run tauri dev
 | `npm run prepare:gateway` | Downloads AgentGateway v1.4.1, verifies its published SHA-256 value, and prepares its target-specific sidecar filename. |
 | `npm run stage:qm` | Copies the existing QM source, web UI, dependencies, and Node-version marker into desktop resources. |
 | `npm run build` | Stages QM resources, type-checks the local control surface, and creates its web assets. |
+| `npm run build:windows` | Prepares AgentGateway, stages QM resources, and produces the Windows desktop package. |
 | `npm run tauri build` | Produces the Windows desktop package after resources are staged. |
 
 ## Security model

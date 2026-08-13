@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::fs;
-use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::io::Write;
+use std::net::{Ipv4Addr, SocketAddr, TcpStream};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
@@ -15,6 +15,7 @@ const GATEWAY_LLM_PORT: u16 = 14000;
 #[derive(Default)]
 struct HostState {
     gateway: Mutex<Option<Child>>,
+    lifecycle: Mutex<()>,
 }
 
 #[derive(Serialize)]
@@ -106,11 +107,21 @@ fn refresh_status(app: &AppHandle, state: &HostState) -> GatewayStatus {
     };
     match gateway.as_mut() {
         Some(child) => match child.try_wait() {
-            Ok(None) => empty_status(
-                app,
-                "running",
-                "AgentGateway is bound to local loopback endpoints.".to_string(),
-            ),
+            Ok(None) => {
+                if TcpStream::connect(("127.0.0.1", GATEWAY_ADMIN_PORT)).is_ok() {
+                    empty_status(
+                        app,
+                        "running",
+                        "AgentGateway is bound to local loopback endpoints.".to_string(),
+                    )
+                } else {
+                    empty_status(
+                        app,
+                        "starting",
+                        "AgentGateway process is alive but administrative endpoint is not ready.".to_string(),
+                    )
+                }
+            }
             Ok(Some(exit)) => {
                 let detail = format!("AgentGateway exited with {exit}.");
                 *gateway = None;
@@ -123,6 +134,10 @@ fn refresh_status(app: &AppHandle, state: &HostState) -> GatewayStatus {
 }
 
 fn start_gateway_internal(app: &AppHandle, state: &HostState) -> Result<GatewayStatus, String> {
+    let _lifecycle_guard = state
+        .lifecycle
+        .lock()
+        .map_err(|_| "The gateway lifecycle lock is unavailable.".to_string())?;
     let current = refresh_status(app, state);
     if current.state == "running" {
         return Ok(current);
@@ -149,6 +164,14 @@ fn start_gateway_internal(app: &AppHandle, state: &HostState) -> Result<GatewayS
     *gateway = Some(child);
     drop(gateway);
     if !wait_for_port(GATEWAY_ADMIN_PORT, Duration::from_secs(8)) {
+        let mut gateway = state
+            .gateway
+            .lock()
+            .map_err(|_| "The gateway supervisor lock is unavailable.".to_string())?;
+        if let Some(mut child) = gateway.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
         return Err(
             "AgentGateway did not become ready on its administrative loopback port.".to_string(),
         );
@@ -157,16 +180,20 @@ fn start_gateway_internal(app: &AppHandle, state: &HostState) -> Result<GatewayS
 }
 
 fn graceful_gateway_stop() {
-    if let Ok(mut stream) = TcpStream::connect(("127.0.0.1", GATEWAY_ADMIN_PORT)) {
+    let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, GATEWAY_ADMIN_PORT));
+    if let Ok(mut stream) = TcpStream::connect_timeout(&addr, Duration::from_secs(1)) {
+        let _ = stream.set_write_timeout(Some(Duration::from_secs(1)));
         let _ = stream.write_all(
             b"GET /quitquitquit HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n",
         );
-        let mut response = Vec::new();
-        let _ = stream.read_to_end(&mut response);
     }
 }
 
 fn stop_gateway_internal(app: &AppHandle, state: &HostState) -> GatewayStatus {
+    let _lifecycle_guard = match state.lifecycle.lock() {
+        Ok(guard) => guard,
+        Err(_) => return empty_status(app, "error", "The gateway lifecycle lock is unavailable.".to_string()),
+    };
     graceful_gateway_stop();
     let deadline = Instant::now() + Duration::from_secs(4);
     loop {
@@ -215,6 +242,12 @@ pub fn run() {
             start_gateway,
             stop_gateway
         ])
-        .run(tauri::generate_context!())
-        .expect("NorthBridge desktop host failed to run");
+        .build(tauri::generate_context!())
+        .expect("NorthBridge desktop host failed to build")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                let state = app_handle.state::<HostState>();
+                stop_gateway_internal(app_handle, &state);
+            }
+        });
 }

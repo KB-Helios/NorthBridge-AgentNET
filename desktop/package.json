@@ -9,7 +9,8 @@
                     "preview":  "vite preview",
                     "tauri":  "tauri",
                     "stage:qm":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/stage-qm-resources.ps1",
-                    "prepare:gateway":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/acquire-agentgateway.ps1"
+                    "prepare:gateway":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/acquire-agentgateway.ps1",
+                    "build:windows":  "npm run prepare:gateway \u0026\u0026 npm run stage:qm \u0026\u0026 npm run tauri build"
                 },
     "dependencies":  {
                          "react":  "^19.1.0",

@@ -11,7 +11,7 @@
   },
   "app": {
     "windows": [{"label": "main", "title": "NorthBridge AgentNET", "width": 1440, "height": 960, "minWidth": 1024, "minHeight": 720}],
-    "security": {"csp": "default-src self; connect-src self http://127.0.0.1:*; img-src self data: blob: https:; style-src self unsafe-inline; font-src self data:; worker-src self blob:"}
+    "security": {"csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:*; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; worker-src 'self' blob:"}
   },
   "bundle": {
     "active": true,
