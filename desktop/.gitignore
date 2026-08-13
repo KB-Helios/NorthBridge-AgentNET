@@ -1,0 +1,8 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/binaries/*.exe
+src-tauri/binaries/*.sha256
+src-tauri/resources/agentgateway/
+src-tauri/resources/node/
+src-tauri/resources/qm/
