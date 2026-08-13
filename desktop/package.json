@@ -1,0 +1,30 @@
+{
+    "name":  "northbridge-agentnet-desktop",
+    "private":  true,
+    "version":  "0.1.0",
+    "type":  "module",
+    "scripts":  {
+                    "dev":  "vite",
+                    "build":  "npm run stage:qm \u0026\u0026 tsc \u0026\u0026 vite build",
+                    "preview":  "vite preview",
+                    "tauri":  "tauri",
+                    "stage:qm":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/stage-qm-resources.ps1",
+                    "prepare:gateway":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/acquire-agentgateway.ps1",
+                    "build:windows":  "npm run prepare:gateway \u0026\u0026 npm run stage:qm \u0026\u0026 npm run tauri build"
+                },
+    "dependencies":  {
+                         "react":  "^19.1.0",
+                         "react-dom":  "^19.1.0",
+                         "@tauri-apps/api":  "^2",
+                         "@tauri-apps/plugin-opener":  "^2"
+                     },
+    "devDependencies":  {
+                            "@types/react":  "^19.1.8",
+                            "@types/react-dom":  "^19.1.6",
+                            "@vitejs/plugin-react":  "^4.6.0",
+                            "typescript":  "~5.8.3",
+                            "vite":  "^7.0.4",
+                            "@tauri-apps/cli":  "^2"
+                        },
+    "description":  "Local-first QM desktop deployment"
+}
